@@ -8,12 +8,8 @@ module.exports = (dbModel, sessionDoc, req) =>
           changeLanguage(dbModel, sessionDoc, req).then(resolve).catch(reject)
           break
         case 'db':
-        case 'period':
-        case 'firm':
-          changeDb(dbModel, sessionDoc, req).then(resolve).catch(reject)
-          break
-        case 'dbList':
-          saveDbList(dbModel, sessionDoc, req).then(resolve).catch(reject)
+        case 'database':
+          changeDatabase(dbModel, sessionDoc, req).then(resolve).catch(reject)
           break
         default:
           restError.param1(req, reject)
@@ -24,44 +20,52 @@ module.exports = (dbModel, sessionDoc, req) =>
     }
   })
 
-function saveDbList(dbModel, sessionDoc, req) {
-  return new Promise(async (resolve, reject) => {
-    sessionDoc.dbList = req.body.dbList || []
-
-    sessionDoc
-      .save()
-      .then(resolve)
-      .catch(reject)
-
-  })
-}
-
-function changeDb(dbModel, sessionDoc, req) {
+function changeDatabase(dbModel, sessionDoc, req) {
   return new Promise(async (resolve, reject) => {
     if (!req.params.param2) return restError.param2(req, reject)
-    if (req.params.param1 == 'db')
-      sessionDoc.db = req.params.param2
-    if (req.params.param1 == 'firm')
-      sessionDoc.firm = req.params.param2
-    if (req.params.param1 == 'period')
-      sessionDoc.period = req.params.param2
+    const dbDoc = await db.databases.findOne({
+      _id: req.params.param2,
+      $or: [
+        { owner: sessionDoc.member },
+        { 'team.teamMember': sessionDoc.member }
+      ],
+      passive: false
+    })
+    if (!dbDoc) return reject(`database not found`)
 
+
+    sessionDoc.db = dbDoc._id
     sessionDoc
       .save()
-      .then(resolve)
+      .then(async result => {
+        resolve({
+          dbId: dbDoc._id,
+          db: dbDoc,
+          dbList: await db.databases.find({
+            $or: [
+              { owner: sessionDoc.member },
+              { 'team.teamMember': sessionDoc.member }
+            ],
+            passive: false
+          }),
+          message: t(`session database has been changed successfully`, sessionDoc.language)
+        })
+      })
       .catch(reject)
 
   })
 }
-
 function changeLanguage(dbModel, sessionDoc, req) {
   return new Promise(async (resolve, reject) => {
     if (!req.params.param2) return restError.param2(req, reject)
 
-    sessionDoc.language = req.params.param2
+    sessionDoc.lang = req.params.param2
     sessionDoc
       .save()
-      .then(resolve)
+      .then(resolve({
+        lang: sessionDoc.lang,
+        message: t('session language has been changed successfully', sessionDoc.language)
+      }))
       .catch(reject)
 
   })

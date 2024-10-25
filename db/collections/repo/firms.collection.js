@@ -1,11 +1,14 @@
 const collectionName = path.basename(__filename, '.collection.js')
 module.exports = function (dbModel) {
-	const schema = mongoose.Schema(
+	let schema = mongoose.Schema(
 		{
-			member: { type: ObjectId, ref: 'members', index: true },
-			name: { type: String, required: true, index: true },
-			// ioType: { type: Number, default: 1, index: true },
-			passive: { type: Boolean, default: false, index: true }
+			type: { type: String, enum: ['customer', 'vendor'], index: true },
+			name: { type: String, required: true, unique: true },
+			address: { type: ObjectId, ref: 'addresses', default: null },
+			shippingAddress: { type: ObjectId, ref: 'addresses', default: null },
+			currency: { type: String, default: 'TRY', enum: ['USD', 'EUR', 'TRY', 'GBP', 'RUB', 'AZN', 'AED'] },
+			itemArticle: { type: String, default: '' },
+			passive: { type: Boolean, default: false, index: true },
 		},
 		{ versionKey: false, timestamps: true }
 	)
@@ -19,5 +22,8 @@ module.exports = function (dbModel) {
 	let model = dbModel.conn.model(collectionName, schema, collectionName)
 
 	model.removeOne = (session, filter) => sendToTrash(dbModel, collectionName, session, filter)
+	model.relations = {
+
+	}
 	return model
 }

@@ -22,28 +22,25 @@ exports.saveSession = async function (memberDoc, role, req, loginProvider = 'ali
 
 	return new Promise(async (resolve, reject) => {
 		try {
-			let oldDb = ''
-			let oldFirm = ''
-			let oldPeriod = ''
-			let oldDbList = []
+			let oldDbId = null
+			const dbList = await db.databases.find({
+				$or: [{ owner: memberDoc._id }, { 'team.teamMember': memberDoc._id }],
+				passive: false
+			}).select('_id name')
 			if (oldSessions.length > 0) {
 				if (!lang) lang = oldSessions[0].lang
-				oldDb = oldSessions[0].db
-				oldFirm = oldSessions[0].firm
-				oldPeriod = oldSessions[0].period
-				oldDbList = oldSessions[0].dbList
+				oldDbId = oldSessions[0].db
+				// oldDbList = oldSessions[0].dbList
+			}
+			if (oldDbId == null && dbList.length > 0) {
+				oldDbId = dbList[0]._id
 			}
 			let sessionDoc = new db.sessions({
 				member: memberDoc._id,
 				loginProvider: loginProvider,
-				username: memberDoc.username,
-				email: memberDoc.email,
-				phoneNumber: memberDoc.phoneNumber,
 				role: role,
-				db: oldDb || '',
-				firm: oldFirm || '',
-				period: oldPeriod || '',
-				dbList: oldDbList || [],
+				db: oldDbId,
+				// dbList: oldDbList || [],
 				deviceId: deviceId,
 				IP: req.IP || '',
 				lastIP: req.IP || '',
@@ -53,16 +50,13 @@ exports.saveSession = async function (memberDoc, role, req, loginProvider = 'ali
 				requestHeaders: req.headers
 			})
 
-
 			sessionDoc
 				.save()
 				.then(async (newDoc) => {
 					let obj = {
 						token: 'AABI_' + auth.sign({ sessionId: newDoc._id.toString() }),
 						db: newDoc.db,
-						firm: newDoc.firm,
-						period: newDoc.period,
-						dbList: newDoc.dbList,
+						// dbList: newDoc.dbList,
 						lang: newDoc.lang,
 						user: memberDoc.toJSON(),
 					}

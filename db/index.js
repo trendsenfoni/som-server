@@ -47,7 +47,7 @@ module.exports = () =>
   new Promise((resolve, reject) => {
     connectMongoDatabase('collections/master', process.env.MONGODB_URI, db)
       .then(() => {
-        // initRepoDb()
+        initRepoDb()
         resolve()
       })
       .catch(reject)
@@ -79,15 +79,15 @@ function initRepoDb() {
   collectionLoader(path.join(__dirname, 'collections/repo'), '.collection.js')
     .then((holder) => {
       global.repoHolder = holder
-      if (process.env.MONGODB_SERVER1_URI) {
-        serverList.server1 = connectRepoDb(process.env.MONGODB_SERVER1_URI)
-      }
-      if (process.env.MONGODB_SERVER2_URI) {
-        serverList.server2 = connectRepoDb(process.env.MONGODB_SERVER2_URI)
-      }
-      if (process.env.MONGODB_SERVER3_URI) {
-        serverList.server3 = connectRepoDb(process.env.MONGODB_SERVER3_URI)
-      }
+      // if (process.env.MONGODB_SERVER1_URI) {
+      //   serverList.server1 = connectRepoDb(process.env.MONGODB_SERVER1_URI)
+      // }
+      // if (process.env.MONGODB_SERVER2_URI) {
+      //   serverList.server2 = connectRepoDb(process.env.MONGODB_SERVER2_URI)
+      // }
+      // if (process.env.MONGODB_SERVER3_URI) {
+      //   serverList.server3 = connectRepoDb(process.env.MONGODB_SERVER3_URI)
+      // }
     })
     .catch((err) => {
       errorLog('refreshRepoDb:', err)
@@ -104,9 +104,19 @@ global.getRepoDbModel = (memberId, dbName, dbServer) =>
     dbModel.memberId = memberId
     dbModel.dbName = dbName
 
-    if (serverList[dbServer]) {
-      dbModel.conn = serverList[dbServer].useDb(dbName)
+    // if (serverList[dbServer]) {
+    // dbModel.conn = serverList[dbServer].useDb(dbName)
+    const mongoAddress = `${process.env.MONGODB_SERVER1_URI}${dbName}`
+    console.log('mongoAddress:', mongoAddress)
 
+
+    dbModel.conn = mongoose.createConnection(mongoAddress, { autoIndex: true })
+    // dbModel.conn = db.conn.useDb(dbName)
+
+    dbModel.conn.on('connected', () => {
+      Object.keys(repoHolder).forEach((key) => {
+        dbModel[key] = repoHolder[key](dbModel)
+      })
       dbModel.free = function () {
         Object.keys(dbModel.conn.models).forEach((key) => {
           delete dbModel.conn.models[key]
@@ -119,23 +129,30 @@ global.getRepoDbModel = (memberId, dbName, dbServer) =>
           }
         })
       }
-
-      Object.keys(repoHolder).forEach((key) => {
-        Object.defineProperty(dbModel, key, {
-          get: function () {
-            if (dbModel.conn.models[key]) {
-              return dbModel.conn.models[key]
-            } else {
-              return repoHolder[key](dbModel)
-            }
-          },
-        })
-      })
-
+      eventLog(dbModel.nameLog, mongoAddress, 'connected')
       resolve(dbModel)
-    } else {
-      reject(`server: ${dbServer} not supported`)
-    }
+
+    })
+
+    dbModel.conn.on('error', (err) => {
+      dbModel.conn.active = false
+      reject(err)
+    })
+
+    dbModel.conn.on('disconnected', () => {
+      dbModel.conn.active = false
+      eventLog(dbModel.nameLog, 'disconnected')
+    })
+
+    // connectMongoDatabase('collections/repo', mongoAddress, dbModel)
+    //   .then(resolve)
+    //   .catch(reject)
+
+
+
+    // } else {
+    //   reject(`server: ${dbServer} not supported`)
+    // }
   })
 
 function connectMongoDatabase(collectionFolder, mongoAddress, dbObj) {

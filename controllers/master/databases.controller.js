@@ -71,9 +71,8 @@ function post(dbModel, sessionDoc, req) {
     let data = req.body || {}
     delete data._id
     if (!data.name) return reject('name required')
-
-    if (await dbModel.databases.countDocuments({ owner: sessionDoc.member, name: data.name }) > 0)
-      return reject(`name already exists`)
+    const c = await dbModel.databases.countDocuments({ owner: sessionDoc.member, name: data.name })
+    if (c > 0) return reject(`name already exists`)
 
     data.identifier = await generateDatabaseIdentifier(data.name)
     data.dbHost = process.env.MONGODB_SERVER1_URI || 'mongodb://localhost:27017/'

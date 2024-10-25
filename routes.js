@@ -36,8 +36,7 @@ module.exports = (app) => {
   adminAuthControllers(app, '/api/v1/admin/auth/:func/:param1/:param2/:param3')
   adminControllers(app, '/api/v1/admin/:func/:param1/:param2/:param3')
   s3Controllers(app, '/api/v1/s3/:func/:param1/:param2/:param3')
-  repoControllers(app, '/api/v1/repo/:func/:param1/:param2/:param3')
-  reportsControllers(app, '/api/v1/reports/:func/:param1/:param2/:param3')
+  repoControllers(app, '/api/v1/db/:func/:param1/:param2/:param3')
   masterControllers(app, '/api/v1/:func/:param1/:param2/:param3')
 
 
@@ -147,47 +146,40 @@ function masterControllers(app, route) {
   })
 }
 
-function reportsControllers(app, route) {
-  setRoutes(app, route, (req, res, next) => {
-    const ctl = getController('/reports', req.params.func)
-    if (ctl) {
-      passport(req)
-        .then((sessionDoc) => {
-          ctl(db, sessionDoc, req)
-            .then((data) => {
-              if (data == undefined) res.json({ success: true })
-              else if (data == null) res.json({ success: true })
-              else {
-                res.status(200).json({ success: true, data: data })
-              }
-            })
-            .catch(next)
-        })
-        .catch((err) => {
-          res.status(401).json({ success: false, error: err })
-        })
-    } else next()
-  })
-}
 
 function repoControllers(app, route) {
   setRoutes(app, route, (req, res, next) => {
     const ctl = getController('/repo', req.params.func)
     if (ctl) {
       passport(req)
-        .then((sessionDoc) => {
-          if (!sessionDoc) {
-            return reject('Unauthorized operation. {token} is empty. Please log in again.')
-          }
-          ctl(db, sessionDoc, req)
-            .then((data) => {
-              if (data == undefined) res.json({ success: true })
-              else if (data == null) res.json({ success: true })
-              else {
-                res.status(200).json({ success: true, data: data })
-              }
+        .then(async sessionDoc => {
+          if (!sessionDoc) return reject('Unauthorized operation. {token} is empty. Please log in again.')
+          if (!sessionDoc.db) return reject('Database not selected')
+          const dbDoc = await db.databases.findOne({
+            $or: [{ owner: sessionDoc.member }, { 'team.teamMember': sessionDoc.member }]
+            , passive: false
+          })
+          if (!dbDoc) return reject(`Database not found`)
+          getRepoDbModel(sessionDoc.member, dbDoc.dbName, 'server1')
+            .then(dbModel => {
+              ctl(dbModel, sessionDoc, req)
+                .then((data) => {
+                  if (data == undefined) res.json({ success: true })
+                  else if (data == null) res.json({ success: true })
+                  else {
+                    res.status(200).json({ success: true, data: data })
+                  }
+                })
+                .catch(next)
+                .finally(() => {
+                  dbModel.free()
+                  dbModel = undefined
+                })
             })
-            .catch(next)
+            .catch(err => {
+              res.status(400).json({ success: false, error: err })
+            })
+
         })
         .catch((err) => {
           res.status(401).json({ success: false, error: err })
