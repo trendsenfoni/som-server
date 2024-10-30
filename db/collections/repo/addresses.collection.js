@@ -19,15 +19,6 @@ module.exports = function (dbModel) {
 				identificationCode: { type: String, default: '' },
 				name: { type: String, default: '' }
 			},
-			billingInfo: {
-				individual: { type: Boolean, default: false, index: true },
-				companyName: { type: String, default: '' },
-				firstName: { type: String, default: '' },
-				lastName: { type: String, default: '' },
-				taxOffice: { type: String, default: '' },
-				taxNumber: { type: String, default: '', index: true },
-				idCardNo: { type: String, default: '', index: true },
-			},
 			passive: { type: Boolean, default: false, index: true },
 		},
 		{ versionKey: false, timestamps: true }

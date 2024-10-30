@@ -29,7 +29,6 @@ function getOne(dbModel, sessionDoc, req) {
   return new Promise((resolve, reject) => {
     dbModel.firms
       .findOne({ _id: req.params.param1 })
-      .populate(['address', 'shippingAddress'])
       .then(resolve)
       .catch(reject)
   })
@@ -44,8 +43,9 @@ function getList(dbModel, sessionDoc, req) {
     let filter = {}
     if (req.query.type)
       filter.type = req.query.type
-    if (req.query.name)
-      filter.name = { $regex: `.*${req.query.name}.*`, $options: 'i' }
+    if (req.query.name || req.query.search)
+      filter.name = { $regex: `.*${req.query.name || req.query.search}.*`, $options: 'i' }
+
     dbModel.firms
       .paginate(filter, options)
       .then(resolve).catch(reject)
