@@ -41,9 +41,19 @@ function getList(dbModel, sessionDoc, req) {
       limit: req.query.pageSize || 10
     }
     let filter = {}
+    if (req.query.search) {
+      filter.$or = [
+        { name: { $regex: `.*${req.query.search}.*`, $options: 'i' } },
+        { article: { $regex: `.*${req.query.search}.*`, $options: 'i' } },
+      ]
+    }
+    console.log('filter:', filter.$or)
     dbModel.itemTypes
       .paginate(filter, options)
-      .then(resolve).catch(reject)
+      .then(result => {
+        console.log('result:', result)
+        resolve(result)
+      }).catch(reject)
   })
 }
 

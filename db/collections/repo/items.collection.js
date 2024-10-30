@@ -6,6 +6,8 @@ module.exports = function (dbModel) {
 			itemQuality: { type: ObjectId, ref: 'itemQualities', default: null, index: true },
 			name: { type: String, unique: true },
 			description: { type: String, default: '' },
+			vatRate: { type: Number, default: 0 },
+			withHoldingTaxRate: { type: Number, default: 0 },
 			passive: { type: Boolean, default: false, index: true }
 		},
 		{ versionKey: false, timestamps: true }
