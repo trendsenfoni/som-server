@@ -8,6 +8,7 @@ module.exports = function (dbModel) {
 			description: { type: String, default: '' },
 			vatRate: { type: Number, default: 0 },
 			withHoldingTaxRate: { type: Number, default: 0 },
+			unit: { type: String, default: '' },
 			passive: { type: Boolean, default: false, index: true }
 		},
 		{ versionKey: false, timestamps: true }

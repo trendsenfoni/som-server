@@ -95,11 +95,7 @@ function post(dbModel, sessionDoc, req) {
 
       newDoc.save()
         .then(async newDoc => {
-          if (!firmDoc.address) {
-            firmDoc.address = newDoc._id
-            firmDoc.shippingAddress = newDoc._id
-            await firmDoc.save()
-          }
+
           resolve(newDoc)
         })
         .catch(reject)
